@@ -36,9 +36,9 @@ const float current_ratio =  2000.0 / 31.35;
 #define COST_PER_KWHR 28.5  // Cost per kWHr (p)
 
 // Mains RMS voltage - can be adjusted
-#define MAINS_V_RMS  240
+#define MAINS_V_RMS  240.0
 
-#define NUM_OF_SAMPLES 1000.0
+#define NUM_OF_SAMPLES 1600.0
 #define ADC_PIN A1
 
 // EPD settings
@@ -77,33 +77,33 @@ void setup() {
 
 void loop() {
   int adc_raw = 0;
-  double adc_bias = 1024 / 2; // halve ADC bits
+  double adc_bias = 1024.0 / 2; // halve ADC bits
   double adc_value = 0;
-  double adc_sqr_sum = 0;
+  double adc_sum_sqr = 0;
 
   for (int n = 0; n < NUM_OF_SAMPLES; n++)
   {
     adc_raw = analogRead(ADC_PIN);
 
-    // Remove ADC bias
-    adc_bias = (adc_bias + (adc_raw - adc_bias) / 1024);
+    // Remove ADC bias (simple low pass filter)
+    adc_bias = (adc_bias + (adc_raw - adc_bias) / 1024.0);
     adc_value = adc_raw - adc_bias;
 
     // Accumulate square of filtered ADC readings
-    adc_sqr_sum += adc_value * adc_value;
+    adc_sum_sqr += adc_value * adc_value;
   }
 
-  // Calculate measured RMS voltage
-  float volts_rms = sqrt(adc_sqr_sum / NUM_OF_SAMPLES) * ARDUINO_V / 1024;
+  // Calculate measured RMS voltage across burden resistor
+  float vrms = sqrt(adc_sum_sqr / NUM_OF_SAMPLES) * ARDUINO_V / 1024.0;
 
   // Scale to mains current RMS (measured Vrms * CT turns / Burden R)
-  float Irms = volts_rms * current_ratio;
+  float Irms = vrms * current_ratio;
 
   // Calculate active power (Irms * Vrms)
   float active_power = Irms * MAINS_V_RMS;
 
   // Calculate cost per kWHr
-  float cost = abs(active_power * COST_PER_KWHR / 1000);
+  float cost = abs(active_power * COST_PER_KWHR / 1000.0);
 
   char power_str[] = {'0', '0', '0', '0', '0', 'W', '\0'};
   val_to_str(active_power, power_str);
@@ -116,11 +116,11 @@ void loop() {
   Serial.print("Arduino V: ");
   Serial.print(ARDUINO_V);
   Serial.print(" Accumulated ADC: ");
-  Serial.print(adc_sqr_sum);
+  Serial.print(adc_sum_sqr);
   Serial.print(" Samples: ");
   Serial.print(NUM_OF_SAMPLES);
   Serial.print(" Measured V: ");
-  Serial.print(volts_rms, 3);
+  Serial.print(vrms, 3);
   Serial.print(" Irms: ");
   Serial.print(Irms);
   Serial.print(" Active Power: ");
