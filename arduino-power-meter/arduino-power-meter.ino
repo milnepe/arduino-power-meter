@@ -9,7 +9,7 @@
   https://github.com/openenergymonitor/EmonLib
 
   Author: Peter Milne
-  Date: 25 May 2022
+  Date: 28 May 2022
 
   Copyright 2022 Peter Milne
   Released under GNU GENERAL PUBLIC LICENSE
@@ -25,20 +25,25 @@
 /*
   Irms conversion ratio derived from
   CT number of turns / Burden resistor
-  Adjust this value to calibrate
+  Adjust this value to calibrate - make sure to
+  use decimal places to avoid integer division!
 */
-const float current_ratio =  2000.0 / 31.35;
+const float current_ratio =  2000.0 / 32.5;
+
+// Resistor divider bias value
+// Must be int32_t for low pass filter!
+int32_t adc_bias = 512;
 
 // Actual Arduino voltage measured across 5V pin & GND
-#define ARDUINO_V 4.66
+#define ARDUINO_V 4.8
 
 // Electricity cost per kWHr, not including standing charge
-#define COST_PER_KWHR 28.5  // Cost per kWHr (p)
+#define COST_PER_KWHR 28.45  // Cost per kWHr (p)
 
 // Mains RMS voltage - can be adjusted
 #define MAINS_V_RMS  240.0
 
-#define NUM_OF_SAMPLES 1600.0
+#define NUM_OF_SAMPLES 1600
 #define ADC_PIN A1
 
 // EPD settings
@@ -48,6 +53,13 @@ const float current_ratio =  2000.0 / 31.35;
 unsigned char image[1024];
 Paint paint(image, 0, 0);    // width should be the multiple of 8
 Epd epd;
+
+// Integer implementation of low pass filter
+// Be carefull with data types!
+int16_t intLowPass(int32_t* bias, uint16_t raw) {
+  *bias = (*bias + ((raw - *bias) / 1024)); // must be 1024
+  return raw - *bias;
+}
 
 void setup() {
   Serial.begin(115200);
@@ -76,40 +88,38 @@ void setup() {
 }
 
 void loop() {
-  int adc_raw = 0;
-  double adc_bias = 1024.0 / 2; // halve ADC bits
-  double adc_value = 0;
-  double adc_sum_sqr = 0;
 
+  unsigned long start = millis();
+  int32_t adc_sum_sqr = 0;
   for (int n = 0; n < NUM_OF_SAMPLES; n++)
   {
-    adc_raw = analogRead(ADC_PIN);
+    int16_t adc_raw = analogRead(ADC_PIN);
 
-    // Remove ADC bias (simple low pass filter)
-    adc_bias = (adc_bias + (adc_raw - adc_bias) / 1024.0);
-    adc_value = adc_raw - adc_bias;
+    // Remove ADC bias - low pass filter
+    int16_t adc_filtered = intLowPass(&adc_bias, adc_raw);
 
     // Accumulate square of filtered ADC readings
-    adc_sum_sqr += adc_value * adc_value;
+    adc_sum_sqr += adc_filtered * adc_filtered;
   }
+  unsigned long finish = millis();
 
   // Calculate measured RMS voltage across burden resistor
-  float vrms = sqrt(adc_sum_sqr / NUM_OF_SAMPLES) * ARDUINO_V / 1024.0;
+  double vrms = sqrt(adc_sum_sqr / NUM_OF_SAMPLES) * ARDUINO_V / 1024.0;
 
-  // Scale to mains current RMS (measured Vrms * CT turns / Burden R)
-  float Irms = vrms * current_ratio;
+  // Scale to mains current RMS (measured vrms * CT turns / Burden R)
+  double Irms = vrms * current_ratio;
 
   // Calculate active power (Irms * Vrms)
-  float active_power = Irms * MAINS_V_RMS;
+  double active_power = Irms * MAINS_V_RMS;
 
   // Calculate cost per kWHr
-  float cost = abs(active_power * COST_PER_KWHR / 1000.0);
+  double rnd_cost = round(active_power * COST_PER_KWHR / 1000.0);
 
   char power_str[] = {'0', '0', '0', '0', '0', 'W', '\0'};
   val_to_str(active_power, power_str);
 
   char cost_str[] = {'0', '0', '0', '0', '0', 'p', '\0'};
-  val_to_str(cost, cost_str);
+  val_to_str(rnd_cost, cost_str);
 
   update_display(&paint, &epd, power_str, cost_str);
 
@@ -125,8 +135,10 @@ void loop() {
   Serial.print(Irms);
   Serial.print(" Active Power: ");
   Serial.print(active_power);
-  Serial.print(" Cost: ");
-  Serial.println(cost);
+  Serial.print(" Rnd Cost: ");
+  Serial.print(rnd_cost);
+  Serial.print(" Time: ");
+  Serial.println(finish - start);
 
   delay(1000);
 }
