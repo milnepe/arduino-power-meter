@@ -9,7 +9,7 @@
   https://github.com/openenergymonitor/EmonLib
 
   Author: Peter Milne
-  Date: 28 May 2022
+  Date: 31 May 2022
 
   Copyright 2022 Peter Milne
   Released under GNU GENERAL PUBLIC LICENSE
@@ -21,6 +21,7 @@
 #include "epd2in9.h"
 #include "epdpaint.h"
 #include "background.h"
+#include "lowpass.h"
 
 /*
   Irms conversion ratio derived from
@@ -31,8 +32,7 @@
 const float current_ratio =  2000.0 / 32.5;
 
 // Resistor divider bias value
-// Must be int32_t for low pass filter!
-int32_t adc_bias = 512;
+int16_t adc_bias = 512;
 
 // Actual Arduino voltage measured across 5V pin & GND
 #define ARDUINO_V 4.8
@@ -53,13 +53,6 @@ int32_t adc_bias = 512;
 unsigned char image[1024];
 Paint paint(image, 0, 0);    // width should be the multiple of 8
 Epd epd;
-
-// Integer implementation of low pass filter
-// Be carefull with data types!
-int16_t intLowPass(int32_t* bias, uint16_t raw) {
-  *bias = (*bias + ((raw - *bias) / 1024)); // must be 1024
-  return raw - *bias;
-}
 
 void setup() {
   Serial.begin(115200);
