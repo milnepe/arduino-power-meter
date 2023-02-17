@@ -42,7 +42,14 @@ unsigned char image[1024];
 Paint paint(image, 0, 0);  // width should be the multiple of 8
 Epd epd;
 unsigned long time_start_ms;
-unsigned long temp_c = 0;
+unsigned long temperature_c = 0;
+
+void TempToStr(unsigned long temp_c, char buffer[6]) {
+  buffer[0] = temp_c / 1000 % 10 + '0';
+  buffer[1] = temp_c / 100 % 10 + '0';
+  buffer[3] = temp_c % 100 / 10 + '0';
+  buffer[4] = temp_c % 100 % 10 + '0';
+}
 
 void setup() {
   // put your setup code here, to run once:
@@ -80,23 +87,16 @@ void setup() {
   time_start_ms = millis();
 }
 
-TempToStr(unsigned int temperature_c) {
-
-}
-
 void loop() {
-  // put your main code here, to run repeatedly:
-  if (temp_c < 10000) {
-    temp_c = (temp_c + 10);
+  static char time_string[] = { '0', '0', '.', '0', '0', '\0' };
+
+  if (temperature_c < 10000) {
+    temperature_c = (temperature_c + 10);
   } else {
-    temp_c = 0;
+    temperature_c = 0;
   }
 
-  char time_string[] = { '0', '0', '.', '0', '0', '\0' };
-  time_string[0] = temp_c / 1000 % 10 + '0';
-  time_string[1] = temp_c / 100 % 10 + '0';
-  time_string[3] = temp_c % 100 / 10 + '0';
-  time_string[4] = temp_c % 100 % 10 + '0';
+  TempToStr(temperature_c, time_string);
 
   //  paint.SetWidth(32);
   paint.SetWidth(32);
