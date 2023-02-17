@@ -88,7 +88,7 @@ void setup() {
 }
 
 void loop() {
-  static char time_string[] = { '0', '0', '.', '0', '0', '\0' };
+  static char temp_string[] = { '0', '0', '.', '0', '0', '\0' };
 
   if (temperature_c < 10000) {
     temperature_c = (temperature_c + 10);
@@ -96,29 +96,30 @@ void loop() {
     temperature_c = 0;
   }
 
-  TempToStr(temperature_c, time_string);
+  TempToStr(temperature_c, temp_string);
 
-  //  paint.SetWidth(32);
   paint.SetWidth(32);
   paint.SetHeight(96);
   paint.SetRotate(ROTATE_90);
 
   paint.Clear(COLORED);
-  paint.DrawStringAt(0, 8, time_string, &Font24, UNCOLORED);
-  //  epd.SetFrameMemory(paint.GetImage(), 80, 72, paint.GetWidth(), paint.GetHeight());
+  paint.DrawStringAt(0, 8, temp_string, &Font24, UNCOLORED);
+
   // Bottom left
-  epd.SetFrameMemory(paint.GetImage(), 0, 0, paint.GetWidth(), paint.GetHeight());
+  //epd.SetFrameMemory(paint.GetImage(), 0, 0, paint.GetWidth(), paint.GetHeight());
+
   // Bottom right (296 - SetHeight(96))
   epd.SetFrameMemory(paint.GetImage(), 0, 200, paint.GetWidth(), paint.GetHeight());
 
   // Top left (128 - SetWidth(32))
-  epd.SetFrameMemory(paint.GetImage(), 96, 0, paint.GetWidth(), paint.GetHeight());
+  //epd.SetFrameMemory(paint.GetImage(), 96, 0, paint.GetWidth(), paint.GetHeight());
 
   // Top right (128 - SetWidth(32), 296 - SetHeight(96))
   epd.SetFrameMemory(paint.GetImage(), 96, 200, paint.GetWidth(), paint.GetHeight());
 
   // Middle ()
-  epd.SetFrameMemory(paint.GetImage(), 48, 96, paint.GetWidth(), paint.GetHeight());
+  //epd.SetFrameMemory(paint.GetImage(), 48, 96, paint.GetWidth(), paint.GetHeight());
+  epd.SetFrameMemory(paint.GetImage(), 48, 200, paint.GetWidth(), paint.GetHeight());
 
   epd.DisplayFrame();
 
